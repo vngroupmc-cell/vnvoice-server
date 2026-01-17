@@ -1,0 +1,5 @@
+{
+  "port": 8080,
+  "maxVoiceDistance": 20,
+  "debug": true
+}
