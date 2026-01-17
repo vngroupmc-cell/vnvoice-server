@@ -1,37 +1,33 @@
-const keyValidator = require('../auth/keyValidator');
-const roomManager = require('../voice/roomManager');
+import WebSocket from "ws";
 
-module.exports = function handlePluginConnection(ws) {
-    console.log('[PLUGIN] Connected');
+const SERVER_URL = "wss://vnvoice-server.onrender.com";
+const API_KEY = "YOUR_PLUGIN_KEY";
 
-    ws.on('message', (message) => {
-        try {
-            const data = JSON.parse(message);
+let ws;
 
-            // Expected Type: "PLAYER_UPDATE"
-            if (data.type === 'PLAYER_UPDATE') {
-                const { uuid, serverId, world, position, key, state, playerName } = data.payload;
+export function connectPlugin() {
+  ws = new WebSocket(SERVER_URL, {
+    headers: {
+      "x-api-key": API_KEY,
+      "x-client": "plugin"
+    }
+  });
 
-                // 1. อัปเดตข้อมูล Session (รวมถึง Key)
-                keyValidator.registerPlayer(uuid, {
-                    key, serverId, world, position, state, playerName
-                });
+  ws.on("open", () => {
+    console.log("[VNVOICE] Plugin connected");
+  });
 
-                // 2. จัดการห้อง (เผื่อมีการเปลี่ยน World)
-                roomManager.updatePlayerRoom(uuid, serverId, world);
-            }
-            
-            // Handle Player Quit
-            if (data.type === 'PLAYER_QUIT') {
-                const { uuid } = data.payload;
-                keyValidator.removeSession(uuid);
-                roomManager.removePlayer(uuid);
-            }
+  ws.on("message", (data) => {
+    const msg = JSON.parse(data.toString());
 
-        } catch (e) {
-            console.error('[PLUGIN] Invalid JSON:', e.message);
-        }
-    });
+    if (msg.type === "voice-range") {
+      // ระยะเสียงจากเซิฟ
+      console.log("Voice range:", msg.range);
+    }
+  });
 
-    ws.on('close', () => console.log('[PLUGIN] Disconnected'));
-};
+  ws.on("close", () => {
+    console.log("[VNVOICE] Plugin disconnected");
+    setTimeout(connectPlugin, 3000);
+  });
+}};
